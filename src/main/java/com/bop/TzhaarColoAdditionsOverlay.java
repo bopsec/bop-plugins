@@ -5,6 +5,8 @@ import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Polygon;
 import java.awt.Stroke;
+import java.util.ArrayList;
+import java.util.List;
 import javax.inject.Inject;
 import net.runelite.api.Client;
 import net.runelite.api.Perspective;
@@ -36,15 +38,21 @@ class TzhaarColoAdditionsOverlay extends Overlay
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
-		if (!config.markPillarTiles())
+		List<TzhaarColoAdditionsPlugin.PillarArea> areas = new ArrayList<>();
+		if (config.markPillarTiles())
 		{
-			return null;
+			areas.addAll(plugin.getPillarAreas());
+		}
+
+		if (config.markSolArenaGuardTiles())
+		{
+			areas.addAll(plugin.getSolArenaGuardWalls());
 		}
 
 		Color markerColor = config.pillarTileColor();
 		PillarMarkerStyle markerStyle = config.pillarMarkerStyle();
 
-		for (TzhaarColoAdditionsPlugin.PillarArea pillarArea : plugin.getPillarAreas())
+		for (TzhaarColoAdditionsPlugin.PillarArea pillarArea : areas)
 		{
 			if (pillarArea.getPlane() != client.getPlane())
 			{

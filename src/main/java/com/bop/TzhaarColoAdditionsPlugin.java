@@ -13,6 +13,7 @@ import net.runelite.api.Renderable;
 import net.runelite.api.Scene;
 import net.runelite.api.Tile;
 import net.runelite.api.TileObject;
+import net.runelite.api.WorldView;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.DecorativeObjectSpawned;
@@ -36,6 +37,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Objects;
@@ -66,7 +68,11 @@ public class TzhaarColoAdditionsPlugin extends Plugin
 
 	private static final Set<Integer> COLOSSEUM_PILLARS = Set.of(ObjectID.PILLAR_CIVITAS01_COLOSSEUM01, ObjectID.PILLAR_CIVITAS01_COLOSSEUM02);
 
-	private static final Set<Integer> COLOSSEUM_OBJECTS_TO_KEEP = Set.of(ObjectID.PILLAR_CIVITAS01_COLOSSEUM01, ObjectID.PILLAR_CIVITAS01_COLOSSEUM02, ObjectID.COLOSSEUM_REWARD, ObjectID.COLOSSEUM_WAVE_EGG_SHELL, ObjectID.COLOSSEUM_MOLTEN_POOL_1, ObjectID.COLOSSEUM_MOLTEN_POOL_2, ObjectID.COLOSSEUM_MOLTEN_POOL_3, ObjectID.COLOSSEUM_HOLY_FIRE);
+	private static final int[][] SOL_ARENA_GUARD_WALLS = {{1817, 3101, 1817, 3112}, {1832, 3101, 1832, 3112}, {1819, 3099, 1830, 3099}, {1819, 3114, 1830, 3114}};
+
+	private static final Set<Integer> SOL_ARENA_GUARDS = Set.of(ObjectID.SHIELD_COMBATANT_1, ObjectID.SHIELD_COMBATANT_2, ObjectID.SHIELD_COMBATANT_3, ObjectID.SHIELD_COMBATANT_4, ObjectID.SHIELD_COMBATANT_5, ObjectID.SHIELD_COMBATANT_6);
+
+	private static final Set<Integer> COLOSSEUM_OBJECTS_TO_KEEP = Set.of(ObjectID.PILLAR_CIVITAS01_COLOSSEUM01, ObjectID.PILLAR_CIVITAS01_COLOSSEUM02, ObjectID.COLOSSEUM_REWARD, ObjectID.COLOSSEUM_WAVE_EGG_SHELL, ObjectID.COLOSSEUM_MOLTEN_POOL_1, ObjectID.COLOSSEUM_MOLTEN_POOL_2, ObjectID.COLOSSEUM_MOLTEN_POOL_3, ObjectID.COLOSSEUM_HOLY_FIRE, ObjectID.SHIELD_COMBATANT_1, ObjectID.SHIELD_COMBATANT_2, ObjectID.SHIELD_COMBATANT_3, ObjectID.SHIELD_COMBATANT_4, ObjectID.SHIELD_COMBATANT_5, ObjectID.SHIELD_COMBATANT_6);
 
 	private static final Set<Integer> INFERNO_SCENE_OBJECTS = Set.of(ObjectID.INFERNO_ENTRANCE_NOOP, ObjectID.INFERNO_ENTRANCE_OP, ObjectID.INFERNO_EXIT, ObjectID.INFERNO_SAFESPOT_100, ObjectID.INFERNO_SAFESPOT_75, ObjectID.INFERNO_SAFESPOT_50, ObjectID.INFERNO_SAFESPOT_25, ObjectID.INFERNO_ENTRANCE, ObjectID.INFERNO_SAFESPOT1, ObjectID.INFERNO_SAFESPOT2, ObjectID.INFERNO_SAFESPOT3);
 
@@ -92,6 +98,7 @@ public class TzhaarColoAdditionsPlugin extends Plugin
 
 	private final Set<PillarArea> pillarAreas = new HashSet<>();
 	private final Set<PillarArea> infernoPillarAreas = new HashSet<>();
+	private final Set<PillarArea> solArenaGuardWalls = new HashSet<>();
 	private boolean inInfernoScene;
 
 	private final RenderCallback renderCallback = new RenderCallback()
@@ -153,6 +160,7 @@ public class TzhaarColoAdditionsPlugin extends Plugin
 		overlayManager.remove(overlay);
 		pillarAreas.clear();
 		infernoPillarAreas.clear();
+		solArenaGuardWalls.clear();
 		inInfernoScene = false;
 		wasInColosseumRegion = false;
 		wasInColosseumBankRegion = false;
@@ -204,6 +212,7 @@ public class TzhaarColoAdditionsPlugin extends Plugin
 		{
 			pillarAreas.clear();
 			infernoPillarAreas.clear();
+			solArenaGuardWalls.clear();
 			inInfernoScene = false;
 			if (gameStateChanged.getGameState() == GameState.LOGIN_SCREEN)
 			{
@@ -231,6 +240,11 @@ public class TzhaarColoAdditionsPlugin extends Plugin
 		if (gameObject != null && INFERNO_PILLARS_TO_MARK.contains(gameObject.getId()))
 		{
 			removeNearestPillarTileMarkers(gameObject);
+		}
+
+		if (gameObject != null && SOL_ARENA_GUARDS.contains(gameObject.getId()))
+		{
+			solArenaGuardWalls.clear();
 		}
 	}
 
@@ -265,7 +279,8 @@ public class TzhaarColoAdditionsPlugin extends Plugin
 		{
 			if ("markPillarTiles".equals(configChanged.getKey())
 				|| "pillarMarkerStyle".equals(configChanged.getKey())
-				|| "pillarTileColor".equals(configChanged.getKey()))
+				|| "pillarTileColor".equals(configChanged.getKey())
+				|| "markSolArenaGuardTiles".equals(configChanged.getKey()))
 			{
 				return;
 			}
@@ -296,6 +311,7 @@ public class TzhaarColoAdditionsPlugin extends Plugin
 		inInfernoScene = false;
 		pillarAreas.clear();
 		infernoPillarAreas.clear();
+		solArenaGuardWalls.clear();
 
 		scanTiles(tiles);
 		scanTiles(scene.getExtendedTiles());
@@ -348,12 +364,18 @@ public class TzhaarColoAdditionsPlugin extends Plugin
 		{
 			removeNearestPillarTileMarkers((GameObject) tileObject);
 		}
+
+		if (tileObject instanceof GameObject && SOL_ARENA_GUARDS.contains(tileObject.getId()) && isInColosseumRegion() && solArenaGuardWalls.isEmpty())
+		{
+			addSolArenaGuardWalls(tileObject.getPlane());
+		}
 	}
 
 	private boolean shouldHide(int objectId)
 	{
 		return config.hideInfernoPillars() && INFERNO_OBJECTS_TO_HIDE.contains(objectId)
 			|| config.hideColosseumPillars() && isInColosseumRegion() && COLOSSEUM_PILLARS.contains(objectId)
+			|| config.hideSolArenaGuards() && isInColosseumRegion() && SOL_ARENA_GUARDS.contains(objectId)
 			|| config.hideInfernoOuterScene2() && inInfernoScene && shouldHideInfernoOuterObject(objectId)
 			|| config.hideColosseumOuterScene2() && isInColosseumRegion() && !COLOSSEUM_OBJECTS_TO_KEEP.contains(objectId);
 	}
@@ -389,10 +411,7 @@ public class TzhaarColoAdditionsPlugin extends Plugin
 
 		int x = worldPoint.getX();
 		int y = worldPoint.getY();
-		return isInWorldArea(x, y, 1816, 3098, 1818, 3100)
-			|| isInWorldArea(x, y, 1816, 3113, 1818, 3115)
-			|| isInWorldArea(x, y, 1831, 3113, 1833, 3115)
-			|| isInWorldArea(x, y, 1831, 3098, 1833, 3100);
+		return isInWorldArea(x, y, 1816, 3098, 1833, 3115);
 	}
 
 	private boolean isInWorldArea(int x, int y, int minX, int minY, int maxX, int maxY)
@@ -491,6 +510,33 @@ public class TzhaarColoAdditionsPlugin extends Plugin
 	Set<PillarArea> getPillarAreas()
 	{
 		return Collections.unmodifiableSet(pillarAreas);
+	}
+
+	Set<PillarArea> getSolArenaGuardWalls()
+	{
+		return Collections.unmodifiableSet(solArenaGuardWalls);
+	}
+
+	private void addSolArenaGuardWalls(int plane)
+	{
+		WorldView worldView = client.getTopLevelWorldView();
+		for (int[] wall : SOL_ARENA_GUARD_WALLS)
+		{
+			LocalPoint start = getInstanceLocalPoint(worldView, wall[0], wall[1], plane);
+			LocalPoint end = getInstanceLocalPoint(worldView, wall[2], wall[3], plane);
+			if (start != null && end != null)
+			{
+				solArenaGuardWalls.add(new PillarArea(plane,
+					Math.min(start.getSceneX(), end.getSceneX()), Math.min(start.getSceneY(), end.getSceneY()),
+					Math.max(start.getSceneX(), end.getSceneX()), Math.max(start.getSceneY(), end.getSceneY())));
+			}
+		}
+	}
+
+	private LocalPoint getInstanceLocalPoint(WorldView worldView, int x, int y, int plane)
+	{
+		Collection<WorldPoint> instancePoints = WorldPoint.toLocalInstance(worldView, new WorldPoint(x, y, plane));
+		return instancePoints.isEmpty() ? null : LocalPoint.fromWorld(worldView, instancePoints.iterator().next());
 	}
 
 	private void markPillarTiles(GameObject gameObject)
@@ -600,7 +646,8 @@ public class TzhaarColoAdditionsPlugin extends Plugin
 		return "hideInfernoPillars".equals(key)
 			|| "hideColosseumPillars".equals(key)
 			|| "hideInfernoOuterScene2".equals(key)
-			|| "hideColosseumOuterScene2".equals(key);
+			|| "hideColosseumOuterScene2".equals(key)
+			|| "hideSolArenaGuards".equals(key);
 	}
 
 	private boolean shouldReloadScene(String key)
@@ -608,7 +655,8 @@ public class TzhaarColoAdditionsPlugin extends Plugin
 		return "hideInfernoPillars".equals(key)
 			|| "hideColosseumPillars".equals(key)
 			|| "hideInfernoOuterScene2".equals(key)
-			|| "hideColosseumOuterScene2".equals(key);
+			|| "hideColosseumOuterScene2".equals(key)
+			|| "hideSolArenaGuards".equals(key);
 	}
 
 	private boolean shouldReloadColosseumSceneOnRegionChange()
