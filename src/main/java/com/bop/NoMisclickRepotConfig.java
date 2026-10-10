@@ -6,6 +6,7 @@ import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
+import net.runelite.client.config.Range;
 
 @ConfigGroup("NoMisclickRepot")
 public interface NoMisclickRepotConfig extends Config
@@ -167,6 +168,81 @@ public interface NoMisclickRepotConfig extends Config
 	default int superCombatPotionBoostThreshold()
 	{
 		return 116;
+	}
+
+	@ConfigItem(
+		keyName = "superRestores",
+		name = "Super restores",
+		description = "Block until a melee stat is drained or the Prayer condition is met",
+		position = 4,
+		section = nonTimedPotionsSection
+	)
+	default boolean superRestores()
+	{
+		return true;
+	}
+
+	@Range(min = -1, max = 99)
+	@ConfigItem(
+		keyName = "superRestorePrayerAt",
+		name = "Super restore Prayer at",
+		description = "Allow at or below this many Prayer points. -1 uses RuneLite's full-dose threshold.",
+		position = 5,
+		section = nonTimedPotionsSection
+	)
+	default int superRestorePrayerAt()
+	{
+		return -1;
+	}
+
+	@ConfigItem(
+		keyName = "sanfewSerums",
+		name = "Sanfew serums",
+		description = "Block until a melee stat is drained, the Prayer condition is met, or there is disease or a Nightmare parasite",
+		position = 6,
+		section = nonTimedPotionsSection
+	)
+	default boolean sanfewSerums()
+	{
+		return true;
+	}
+
+	@Range(min = -1, max = 99)
+	@ConfigItem(
+		keyName = "sanfewPrayerAt",
+		name = "Sanfew Prayer at",
+		description = "Allow at or below this many Prayer points. -1 uses RuneLite's full-dose threshold.",
+		position = 7,
+		section = nonTimedPotionsSection
+	)
+	default int sanfewPrayerAt()
+	{
+		return -1;
+	}
+
+	@ConfigItem(
+		keyName = "prayerPotions",
+		name = "Prayer potions",
+		description = "Block until the Prayer condition is met",
+		position = 8,
+		section = nonTimedPotionsSection
+	)
+	default boolean prayerPotions()
+	{
+		return true;
+	}
+
+	@Range(min = -1, max = 99)
+	@ConfigItem(
+		keyName = "prayerPotionPrayerAt",
+		name = "Prayer potion Prayer at",
+		description = "Allow at or below this many Prayer points. -1 uses RuneLite's full-dose threshold.",
+		position = 9,
+		section = nonTimedPotionsSection
+	)
+	default int prayerPotionPrayerAt()
+	{
+		return -1;
 	}
 
 	@ConfigItem(

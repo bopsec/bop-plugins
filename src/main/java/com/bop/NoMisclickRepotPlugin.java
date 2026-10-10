@@ -25,6 +25,7 @@ import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.game.ItemVariationMapping;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
@@ -92,6 +93,12 @@ public class NoMisclickRepotPlugin extends Plugin
 	List<Integer> regularRangingPots = List.of(ItemID._4DOSERANGERSPOTION, ItemID._3DOSERANGERSPOTION, ItemID._2DOSERANGERSPOTION, ItemID._1DOSERANGERSPOTION);
 	List<Integer> regularSuperCombatPots = List.of(ItemID._4DOSE2COMBAT, ItemID._3DOSE2COMBAT, ItemID._2DOSE2COMBAT, ItemID._1DOSE2COMBAT);
 
+	/*
+	Prayer restoring potions
+	 */
+	List<Integer> sanfewPotions = List.of(ItemID.SANFEW_SALVE_4_DOSE, ItemID.SANFEW_SALVE_3_DOSE, ItemID.SANFEW_SALVE_2_DOSE, ItemID.SANFEW_SALVE_1_DOSE);
+	List<Integer> superRestorePotions = List.of(ItemID._4DOSE2RESTORE, ItemID._3DOSE2RESTORE, ItemID._2DOSE2RESTORE, ItemID._1DOSE2RESTORE);
+	List<Integer> prayerPotions = List.of(ItemID._4DOSEPRAYERRESTORE, ItemID._3DOSEPRAYERRESTORE, ItemID._2DOSEPRAYERRESTORE, ItemID._1DOSEPRAYERRESTORE);
 	/*
 	Prayer regeneration potion
 	 */
@@ -317,7 +324,58 @@ public class NoMisclickRepotPlugin extends Plugin
 	private boolean isActiveNonTimedPotion(int itemId)
 	{
 		return (config.rangingPotions() && regularRangingPots.contains(itemId) && isRegularRangeBoostAboveThreshold())
-			|| (config.superCombatPotions() && regularSuperCombatPots.contains(itemId) && isRegularSuperCombatBoostAboveThreshold());
+			|| (config.superCombatPotions() && regularSuperCombatPots.contains(itemId) && isRegularSuperCombatBoostAboveThreshold())
+			|| (config.superRestores() && superRestorePotions.contains(itemId) && !hasDrainedMeleeStats() && !canRestorePrayer(8, 25, 27, config.superRestorePrayerAt()))
+			|| (config.sanfewSerums() && sanfewPotions.contains(itemId) && !hasDrainedMeleeStats() && !canRestorePrayer(4, 30, 32, config.sanfewPrayerAt())
+				&& client.getVarpValue(VarPlayerID.DISEASE) <= 0 && client.getVarbitValue(VarbitID.PARASITE) == 0)
+			|| (config.prayerPotions() && prayerPotions.contains(itemId) && !canRestorePrayer(7, 25, 27, config.prayerPotionPrayerAt()));
+	}
+
+	private boolean hasDrainedMeleeStats()
+	{
+		return client.getBoostedSkillLevel(Skill.ATTACK) < client.getRealSkillLevel(Skill.ATTACK)
+			|| client.getBoostedSkillLevel(Skill.STRENGTH) < client.getRealSkillLevel(Skill.STRENGTH)
+			|| client.getBoostedSkillLevel(Skill.DEFENCE) < client.getRealSkillLevel(Skill.DEFENCE);
+	}
+
+	private boolean canRestorePrayer(int flatAmount, int percent, int wrenchPercent, int prayerAt)
+	{
+		int currentPrayer = client.getBoostedSkillLevel(Skill.PRAYER);
+		if (prayerAt >= 0)
+		{
+			return currentPrayer <= prayerAt;
+		}
+
+		int prayerLevel = client.getRealSkillLevel(Skill.PRAYER);
+		int restoreAmount = flatAmount + prayerLevel * (hasPrayerRestoreBonus() ? wrenchPercent : percent) / 100;
+		return prayerLevel - currentPrayer >= restoreAmount;
+	}
+
+	private boolean hasPrayerRestoreBonus()
+	{
+		return hasPrayerRestoreBonus(client.getItemContainer(InventoryID.INV), false)
+			|| hasPrayerRestoreBonus(client.getItemContainer(InventoryID.WORN), true);
+	}
+
+	private boolean hasPrayerRestoreBonus(ItemContainer items, boolean worn)
+	{
+		if (items == null)
+		{
+			return false;
+		}
+
+		for (Item item : items.getItems())
+		{
+			int itemId = item.getId();
+			if (itemId == ItemID.DEAL_WRENCH_BLESSED
+				|| ItemVariationMapping.getVariations(ItemID.SKILLCAPE_PRAYER).contains(itemId)
+				|| ItemVariationMapping.getVariations(ItemID.SKILLCAPE_MAX).contains(itemId)
+				|| worn && itemId != ItemID.ROTG && ItemVariationMapping.getVariations(ItemID.ROTG).contains(itemId))
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private boolean isActiveGoading(int itemId)
@@ -803,6 +861,21 @@ public class NoMisclickRepotPlugin extends Plugin
 			return PotionGroup.SUPER_COMBAT;
 		}
 
+		if (sanfewPotions.contains(itemId))
+		{
+			return PotionGroup.SANFEW_SERUM;
+		}
+
+		if (superRestorePotions.contains(itemId))
+		{
+			return PotionGroup.SUPER_RESTORE;
+		}
+
+		if (prayerPotions.contains(itemId))
+		{
+			return PotionGroup.PRAYER_POTION;
+		}
+
 		if (venomPots.contains(itemId))
 		{
 			return PotionGroup.ANTIVENOM;
@@ -856,6 +929,9 @@ public class NoMisclickRepotPlugin extends Plugin
 		DIVINE_ATTACK,
 		RANGING,
 		SUPER_COMBAT,
+		SANFEW_SERUM,
+		SUPER_RESTORE,
+		PRAYER_POTION,
 		PRAYER_REGEN,
 		GOADING,
 		ANTIFIRE,
