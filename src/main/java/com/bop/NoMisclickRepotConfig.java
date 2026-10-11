@@ -28,7 +28,8 @@ public interface NoMisclickRepotConfig extends Config
 	@ConfigSection(
 		name = "Advanced",
 		description = "Advanced behavior overrides",
-		position = 4
+		position = 4,
+		closedByDefault = true
 	)
 	String advancedSection = "advanced";
 
@@ -179,7 +180,7 @@ public interface NoMisclickRepotConfig extends Config
 	)
 	default boolean superRestores()
 	{
-		return true;
+		return false;
 	}
 
 	@Range(min = -1, max = 99)
@@ -204,7 +205,7 @@ public interface NoMisclickRepotConfig extends Config
 	)
 	default boolean sanfewSerums()
 	{
-		return true;
+		return false;
 	}
 
 	@Range(min = -1, max = 99)
@@ -229,7 +230,7 @@ public interface NoMisclickRepotConfig extends Config
 	)
 	default boolean prayerPotions()
 	{
-		return true;
+		return false;
 	}
 
 	@Range(min = -1, max = 99)
