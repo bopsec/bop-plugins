@@ -6,6 +6,7 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.WidgetItem;
 import net.runelite.client.ui.overlay.WidgetItemOverlay;
 
@@ -22,7 +23,7 @@ public class NoMisclickRepotItemOverlay extends WidgetItemOverlay
 	{
 		this.plugin = plugin;
 		this.config = config;
-		showOnInventory();
+		showOnInterfaces(InterfaceID.INVENTORY);
 	}
 
 	@Override
