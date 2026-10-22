@@ -9,8 +9,8 @@ public interface InstanceCoordsConfig extends Config
 {
     @ConfigItem(
             keyName = "markTile",
-            name = "Mark tile",
-            description = "Highlight a tile at the configured position in the current instance slot",
+            name = "Mark single tile",
+            description = "Highlight the tile at the Slot X and Slot Y position",
             position = 0
     )
     default boolean markTile()
@@ -38,5 +38,16 @@ public interface InstanceCoordsConfig extends Config
     default int tileY()
     {
         return 0;
+    }
+
+    @ConfigItem(
+            keyName = "additionalMarkers",
+            name = "Additional tile markers",
+            description = "Add any number of markers as X,Y,#RRGGBB entries separated by semicolons, for example 12,34,#FF0000; 20,21,#00FF00",
+            position = 3
+    )
+    default String additionalMarkers()
+    {
+        return "";
     }
 }

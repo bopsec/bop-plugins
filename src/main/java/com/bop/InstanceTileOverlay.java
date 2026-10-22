@@ -6,6 +6,8 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Polygon;
+import java.util.List;
+import java.util.Objects;
 import javax.inject.Singleton;
 import net.runelite.api.Client;
 import net.runelite.api.Perspective;
@@ -21,11 +23,12 @@ import net.runelite.client.ui.overlay.OverlayUtil;
 @Singleton
 public class InstanceTileOverlay extends Overlay
 {
-    private static final Color FILL = new Color(0, 255, 255, 60);
-    private static final Color OUTLINE = Color.CYAN;
+    private static final BasicStroke STROKE = new BasicStroke(2);
 
     private final Client client;
     private final InstanceCoordsConfig config;
+    private String cachedMarkerText;
+    private List<InstanceTileMarker> cachedMarkers;
 
     @Inject
     public InstanceTileOverlay(Client client, InstanceCoordsConfig config)
@@ -39,7 +42,8 @@ public class InstanceTileOverlay extends Overlay
     @Override
     public Dimension render(Graphics2D graphics)
     {
-        if (!config.markTile())
+        String markerText = config.additionalMarkers();
+        if (!config.markTile() && (markerText == null || markerText.isEmpty()))
         {
             return null;
         }
@@ -68,23 +72,43 @@ public class InstanceTileOverlay extends Overlay
             return null;
         }
 
-        WorldPoint target = slot.tileAt(config.tileX(), config.tileY(), worldView.getPlane());
+        if (config.markTile())
+        {
+            renderMarker(graphics, worldView, slot, config.tileX(), config.tileY(), Color.CYAN);
+        }
+
+        if (!Objects.equals(markerText, cachedMarkerText) || cachedMarkers == null)
+        {
+            cachedMarkerText = markerText;
+            cachedMarkers = InstanceTileMarker.parse(markerText);
+        }
+        for (InstanceTileMarker marker : cachedMarkers)
+        {
+            renderMarker(graphics, worldView, slot, marker.x, marker.y, marker.color);
+        }
+        return null;
+    }
+
+    private void renderMarker(Graphics2D graphics, WorldView worldView, InstanceSlotCoords.Slot slot,
+                              int x, int y, Color color)
+    {
+        WorldPoint target = slot.tileAt(x, y, worldView.getPlane());
         if (target == null)
         {
-            return null;
+            return;
         }
 
         LocalPoint tile = LocalPoint.fromWorld(worldView, target);
         if (tile == null)
         {
-            return null;
+            return;
         }
 
         Polygon polygon = Perspective.getCanvasTilePoly(client, tile, worldView.getPlane());
         if (polygon != null)
         {
-            OverlayUtil.renderPolygon(graphics, polygon, OUTLINE, FILL, new BasicStroke(2));
+            Color fill = new Color(color.getRed(), color.getGreen(), color.getBlue(), 60);
+            OverlayUtil.renderPolygon(graphics, polygon, color, fill, STROKE);
         }
-        return null;
     }
 }
