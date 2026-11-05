@@ -1,2 +1,5 @@
-## Support/Contact me
-If you have any suggestions or need support, you can open a Github issue, or contact me [in my discord server.](https://discord.gg/AHcvPd9uru)
+# Zorya's Tome Stacks
+
+Shows an infobox for current stack count on the Zorya's tome spec.
+
+Configurable timer overlay if you unequip the tome, the stacks expire if you've not used a stack in 30 seconds.
